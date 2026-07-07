@@ -1,82 +1,80 @@
-# Docker GitHub 构建说明
+# Docker 部署
 
-这套配置的目标是：GitHub Actions 负责构建镜像并推送到 GHCR，本地服务器只拉取镜像运行，避免在慢机器上编译 PHP 扩展和前端资源。
+镜像地址：
 
-## 1. GitHub 构建镜像
-
-推送到 `dev`、`main`、`master` 或创建 `v*` tag 后，会触发 `.github/workflows/docker-image.yml`。
-
-镜像默认推送到：
-
-```bash
+```text
 ghcr.io/inspoaibox/lksypro-mc:latest
 ```
 
-也可以在 GitHub Actions 页面手动运行 `Docker Image` workflow。
+## 首次安装
 
-## 2. 服务器运行
-
-复制环境示例：
+先在 GitHub Actions 手动运行 `Docker Image`，或推送代码触发构建。构建完成后，在服务器执行：
 
 ```bash
 cp .env.docker.example .env.docker
-```
-
-编辑 `.env.docker`，至少替换数据库密码：
-
-```bash
-MYSQL_DATABASE=lsky_prod
-MYSQL_USER=lsky_app
-MYSQL_PASSWORD=<long-random-password>
-MYSQL_ROOT_PASSWORD=<different-long-random-password>
-```
-
-Linux 服务器可以用下面的命令生成密码：
-
-```bash
 openssl rand -base64 32
 ```
 
-如果仓库或 GHCR package 是私有的，先登录：
+编辑 `.env.docker`，填入数据库密码和站点地址：
+
+```env
+APP_URL=https://你的域名
+MYSQL_DATABASE=lsky_prod
+MYSQL_USER=lsky_app
+MYSQL_PASSWORD=随机密码
+MYSQL_ROOT_PASSWORD=另一个随机密码
+```
+
+私有镜像先登录 GHCR：
 
 ```bash
 docker login ghcr.io -u <github-user>
 ```
 
-拉取并启动：
+启动：
 
 ```bash
 docker compose --env-file .env.docker pull
 docker compose --env-file .env.docker up -d
 ```
 
-默认访问地址：
+访问 `APP_URL`，安装页会自动带出数据库配置，正常只需要填写管理员邮箱和密码。
 
-```text
-http://localhost:8080
-```
-
-安装页面会自动带出 `.env.docker` 中的数据库配置。正常情况下只需要填写管理员邮箱和密码即可。
-
-如果页面没有自动带出，数据库信息可手动使用：
+如果数据库字段没有自动带出，手动填写：
 
 ```text
 Host: db
 Port: 3306
 Database: lsky_prod
 Username: lsky_app
-Password: 你在 .env.docker 中设置的 MYSQL_PASSWORD
+Password: .env.docker 里的 MYSQL_PASSWORD
 ```
 
-生产环境请务必修改 `.env.docker` 里的数据库密码和 `APP_URL`。
+## 更新
 
-## 3. 更新镜像
-
-GitHub 构建完成后，服务器执行：
+GitHub Actions 构建新镜像后，在服务器执行：
 
 ```bash
 docker compose --env-file .env.docker pull app
 docker compose --env-file .env.docker up -d app
+docker compose --env-file .env.docker exec app php artisan migrate --force
+docker compose --env-file .env.docker exec app php artisan optimize:clear
 ```
 
-运行数据保存在 Docker volumes 中，包括数据库、`storage`、`.env` 和 `installed.lock`。
+可选清理旧镜像：
+
+```bash
+docker image prune -f
+```
+
+## 注意
+
+数据保存在 Docker volumes：数据库、`storage`、`.env`、`installed.lock`。
+
+不要执行：
+
+```bash
+docker compose down -v
+```
+
+这个命令会删除数据库和上传文件。
