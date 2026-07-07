@@ -18,9 +18,10 @@ class ImageController extends Controller
     public function index(Request $request): View
     {
         $keywords = $request->query('keywords');
+        $ordered = false;
         $images = Image::query()->with(['user' => function (BelongsTo $belongsTo) {
             $belongsTo->withSum('images', 'size');
-        }, 'album', 'group', 'strategy'])->when($keywords, function (Builder $builder, $keywords) {
+        }, 'album', 'group', 'strategy'])->when($keywords, function (Builder $builder, $keywords) use (&$ordered) {
             $words = [];
             $qualifiers = [
                 'name:', 'album:', 'group:', 'strategy:', 'email:', 'extension:', 'md5:', 'sha1:', 'ip:', 'is:', 'order:',
@@ -31,18 +32,36 @@ class ImageController extends Controller
                 }
                 $words[] = $keyword;
                 return false;
-            })->each(function ($filter) use ($builder) {
-                match ($filter) {
-                    'is:public' => $builder->where('permission', ImagePermission::Public),
-                    'is:private' => $builder->where('permission', ImagePermission::Private),
-                    'is:unhealthy' => $builder->where('is_unhealthy', 1),
-                    'is:guest' => $builder->whereNull('user_id'),
-                    'is:adminer' => $builder->whereHas('user', fn (Builder $builder) => $builder->where('is_adminer', 1)),
-                    'order:earliest' => $builder->orderBy('created_at'),
-                    'order:utmost' => $builder->orderByDesc('size'),
-                    'order:least' => $builder->orderBy('size'),
-                    default => 0,
-                };
+            })->each(function ($filter) use ($builder, &$ordered) {
+                switch ($filter) {
+                    case 'is:public':
+                        $builder->where('permission', ImagePermission::Public);
+                        break;
+                    case 'is:private':
+                        $builder->where('permission', ImagePermission::Private);
+                        break;
+                    case 'is:unhealthy':
+                        $builder->where('is_unhealthy', 1);
+                        break;
+                    case 'is:guest':
+                        $builder->whereNull('user_id');
+                        break;
+                    case 'is:adminer':
+                        $builder->whereHas('user', fn (Builder $builder) => $builder->where('is_adminer', 1));
+                        break;
+                    case 'order:earliest':
+                        $builder->orderBy('created_at');
+                        $ordered = true;
+                        break;
+                    case 'order:utmost':
+                        $builder->orderByDesc('size');
+                        $ordered = true;
+                        break;
+                    case 'order:least':
+                        $builder->orderBy('size');
+                        $ordered = true;
+                        break;
+                }
 
                 [$qualifier, $value] = explode(':', $filter);
 
@@ -57,18 +76,20 @@ class ImageController extends Controller
                         'extension' => $builder->where('extension', $value),
                         'md5' => $builder->where('md5', $value),
                         'sha1' => $builder->where('sha1', $value),
-                        'ip' => $builder->where('ip', $value),
+                        'ip' => $builder->where('uploaded_ip', $value),
                         default => 0
                     };
                 }
             });
 
             foreach ($words as $word) {
-                $builder->where('name', 'like', "%{$word}%")
-                    ->orWhere('origin_name', 'like', "%{$word}%")
-                    ->orWhere('alias_name', 'like', "%{$word}%");
+                $builder->where(function (Builder $builder) use ($word) {
+                    $builder->where('name', 'like', "%{$word}%")
+                        ->orWhere('origin_name', 'like', "%{$word}%")
+                        ->orWhere('alias_name', 'like', "%{$word}%");
+                });
             }
-        })->latest()->paginate(40);
+        })->when(! $ordered, fn (Builder $builder) => $builder->latest())->paginate(40);
         $images->getCollection()->each(function (Image $image) {
             $image->append('url', 'pathname', 'thumb_url');
             $image->album?->setVisible(['name']);
@@ -90,6 +111,10 @@ class ImageController extends Controller
     {
         /** @var Image $image */
         $image = Image::with('user', 'strategy', 'album')->find($request->route('id'));
+        if (! $image) {
+            return $this->fail('未找到该图片')->setStatusCode(404);
+        }
+
         (new UserService())->deleteImages([$image->id]);
         return $this->success('删除成功');
     }

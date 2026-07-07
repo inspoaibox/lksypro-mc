@@ -63,38 +63,42 @@
             <div id="installing" class="mt-4 p-6 rounded-md bg-white w-full hidden">
                 <p class="text-md mb-4 block text-center">Step 2 > 配置数据库和管理员账号</p>
 
+                @php
+                    $databaseConnection = config('database.default') ?: 'mysql';
+                    $databaseConfig = config("database.connections.{$databaseConnection}", []);
+                @endphp
                 <form class="w-full" method="post">
                     <div class="px-3 py-4 bg-white sm:p-6">
                         <div class="grid grid-cols-6 gap-6">
                             <div class="col-span-6">
                                 <label for="connection" class="block text-sm font-medium text-gray-700">数据库类型</label>
                                 <x-select id="connection" name="connection">
-                                    <option value="mysql">MySQL 5.7+</option>
-                                    <option value="pgsql">PostgreSQL 9.6+</option>
-                                    <option value="sqlite">SQLite 3.8.8+</option>
-                                    <option value="sqlsrv">SQL Server 2017+</option>
+                                    <option value="mysql" @selected($databaseConnection === 'mysql')>MySQL 5.7+</option>
+                                    <option value="pgsql" @selected($databaseConnection === 'pgsql')>PostgreSQL 9.6+</option>
+                                    <option value="sqlite" @selected($databaseConnection === 'sqlite')>SQLite 3.8.8+</option>
+                                    <option value="sqlsrv" @selected($databaseConnection === 'sqlsrv')>SQL Server 2017+</option>
                                 </x-select>
                                 <p class="mt-2 text-sm text-red-500 hidden"></p>
                             </div>
                             <div class="col-span-6">
                                 <label for="host" class="block text-sm font-medium text-gray-700">数据库连接地址</label>
-                                <x-input type="text" name="host" id="host" placeholder="请输入数据库连接地址" value="127.0.0.1"/>
+                                <x-input type="text" name="host" id="host" placeholder="请输入数据库连接地址" value="{{ $databaseConfig['host'] ?? '127.0.0.1' }}"/>
                             </div>
                             <div class="col-span-6">
                                 <label for="port" class="block text-sm font-medium text-gray-700">数据库连接端口</label>
-                                <x-input type="number" name="port" id="port" placeholder="请输入数据库连接端口" value="3306"/>
+                                <x-input type="number" name="port" id="port" placeholder="请输入数据库连接端口" value="{{ $databaseConfig['port'] ?? '3306' }}"/>
                             </div>
                             <div class="col-span-6">
                                 <label for="database" class="block text-sm font-medium text-gray-700">数据库名称/路径</label>
-                                <x-input type="text" name="database" id="database" placeholder="请输入数据库名称/路径" value=""/>
+                                <x-input type="text" name="database" id="database" placeholder="请输入数据库名称/路径" value="{{ $databaseConfig['database'] ?? '' }}"/>
                             </div>
                             <div class="col-span-6 sm:col-span-3">
                                 <label for="username" class="block text-sm font-medium text-gray-700">数据库用户名</label>
-                                <x-input type="text" name="username" id="username" placeholder="请输入数据库用户名" value="root"/>
+                                <x-input type="text" name="username" id="username" placeholder="请输入数据库用户名" value="{{ $databaseConfig['username'] ?? 'root' }}"/>
                             </div>
                             <div class="col-span-6 sm:col-span-3">
                                 <label for="password" class="block text-sm font-medium text-gray-700">数据库密码</label>
-                                <x-input type="password" name="password" id="password" placeholder="请输入数据库密码" value="root"/>
+                                <x-input type="password" name="password" id="password" placeholder="请输入数据库密码" value="{{ $databaseConfig['password'] ?? 'root' }}"/>
                             </div>
                             <div class="col-span-6 sm:col-span-3">
                                 <label for="email" class="block text-sm font-medium text-gray-700"><span class="text-red-500">*</span>管理员账号邮箱</label>

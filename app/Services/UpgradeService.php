@@ -150,7 +150,7 @@ class UpgradeService
      */
     public function getProgress()
     {
-        Cache::get('upgrade_progress');
+        return Cache::get('upgrade_progress');
     }
 
     protected function gc()

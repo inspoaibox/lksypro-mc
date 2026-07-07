@@ -79,10 +79,13 @@ class ImageController extends Controller
         /** @var User $user */
         $user = Auth::user();
         /** @var Image $image */
-        if ($image = $user->images()->find($request->input('id'))) {
-            $image->alias_name = $request->input('name');
-            $image->save();
+        $image = $user->images()->find($request->input('id'));
+        if (! $image) {
+            return $this->fail('未找到该图片')->setStatusCode(404);
         }
+
+        $image->alias_name = $request->input('name');
+        $image->save();
 
         return $this->success('重命名成功', $image->only('id', 'filename'));
     }

@@ -1,0 +1,47 @@
+services:
+  app:
+    image: ${LSKY_IMAGE:-ghcr.io/inspoaibox/lsky-pro:latest}
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:80"
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: ${MYSQL_DATABASE:?Set MYSQL_DATABASE in .env.docker}
+      DB_USERNAME: ${MYSQL_USER:?Set MYSQL_USER in .env.docker}
+      DB_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env.docker}
+      CACHE_DRIVER: file
+      QUEUE_CONNECTION: sync
+      SESSION_DRIVER: file
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - lsky_storage:/var/www/html/storage
+      - lsky_bootstrap_cache:/var/www/html/bootstrap/cache
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?Set MYSQL_DATABASE in .env.docker}
+      MYSQL_USER: ${MYSQL_USER:?Set MYSQL_USER in .env.docker}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env.docker}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env.docker}
+    volumes:
+      - lsky_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  lsky_storage:
+  lsky_bootstrap_cache:
+  lsky_mysql:
