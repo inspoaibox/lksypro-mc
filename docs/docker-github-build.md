@@ -9,7 +9,7 @@
 镜像默认推送到：
 
 ```bash
-ghcr.io/inspoaibox/lsky-pro:latest
+ghcr.io/inspoaibox/lksypro-mc:latest
 ```
 
 也可以在 GitHub Actions 页面手动运行 `Docker Image` workflow。

@@ -1,6 +1,6 @@
 services:
   app:
-    image: ${LSKY_IMAGE:-ghcr.io/inspoaibox/lsky-pro:latest}
+    image: ${LSKY_IMAGE:-ghcr.io/inspoaibox/lksypro-mc:latest}
     restart: unless-stopped
     ports:
       - "${APP_PORT:-8080}:80"
