@@ -16,7 +16,21 @@ ghcr.io/inspoaibox/lksypro-mc:latest
 
 ## 首次安装
 
-在服务器准备环境文件：
+先把部署文件放到服务器。推荐直接 clone 仓库：
+
+```bash
+git clone https://github.com/inspoaibox/lksypro-mc.git
+cd lksypro-mc
+```
+
+如果服务器不放完整代码，至少要上传仓库根目录里的这两个文件：
+
+```text
+docker-compose.yml
+.env.docker.example
+```
+
+`.env.docker.example` 是模板文件，复制一份作为服务器自己的配置：
 
 ```bash
 cp .env.docker.example .env.docker
@@ -34,7 +48,7 @@ openssl rand -base64 32
 ```env
 LSKY_IMAGE=ghcr.io/inspoaibox/lksypro-mc:latest
 APP_PORT=8080
-APP_URL=https://你的域名
+APP_URL=http://服务器IP:8080
 
 MYSQL_DATABASE=lsky_prod
 MYSQL_USER=lsky_app
@@ -55,7 +69,22 @@ docker compose --env-file .env.docker pull
 docker compose --env-file .env.docker up -d
 ```
 
-浏览器访问 `APP_URL`。安装页会自动带出数据库配置，正常只需要填写管理员邮箱和密码。
+浏览器访问：
+
+```text
+http://服务器IP:8080
+```
+
+如果要用 80 端口：
+
+```env
+APP_PORT=80
+APP_URL=http://服务器IP
+```
+
+没有配置反向代理和 HTTPS 证书时，不要把 `APP_URL` 写成 `https://...`。
+
+安装页会自动带出数据库配置，正常只需要填写管理员邮箱和密码。
 
 如果数据库字段没有自动带出，手动填写：
 
@@ -121,6 +150,34 @@ docker compose down -v
 ```
 
 这个命令会删除数据库和上传文件。
+
+## 无法访问排查
+
+先在服务器本机测试：
+
+```bash
+curl -I http://127.0.0.1:8080
+```
+
+查看端口映射：
+
+```bash
+docker compose --env-file .env.docker ps
+```
+
+查看应用日志：
+
+```bash
+docker compose --env-file .env.docker logs --tail=100 app
+```
+
+如果服务器本机能访问，但外网不能访问，检查防火墙和云服务器安全组，放行 TCP `8080`。
+
+Ubuntu 防火墙示例：
+
+```bash
+ufw allow 8080/tcp
+```
 
 ## 许可证
 
