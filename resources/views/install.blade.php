@@ -66,6 +66,13 @@
                 @php
                     $databaseConnection = config('database.default') ?: 'mysql';
                     $databaseConfig = config("database.connections.{$databaseConnection}", []);
+                    $defaultPorts = ['mysql' => '3306', 'pgsql' => '5432', 'sqlsrv' => '1433'];
+                    $databaseValue = fn (string $key, string $default = '') => filled($databaseConfig[$key] ?? null) ? $databaseConfig[$key] : $default;
+                    $databaseHost = $databaseValue('host', $databaseConnection === 'sqlsrv' ? 'localhost' : '127.0.0.1');
+                    $databasePort = $databaseValue('port', $defaultPorts[$databaseConnection] ?? '');
+                    $databaseName = $databaseValue('database');
+                    $databaseUsername = $databaseValue('username', $databaseConnection === 'mysql' ? 'root' : '');
+                    $isDockerDatabase = $databaseConnection === 'mysql' && $databaseHost === 'db';
                 @endphp
                 <form class="w-full" method="post">
                     <div class="px-3 py-4 bg-white sm:p-6">
@@ -79,26 +86,29 @@
                                     <option value="sqlsrv" @selected($databaseConnection === 'sqlsrv')>SQL Server 2017+</option>
                                 </x-select>
                                 <p class="mt-2 text-sm text-red-500 hidden"></p>
+                                @if($isDockerDatabase)
+                                    <p class="mt-2 text-sm text-gray-500">Docker 部署已默认使用内置 MySQL，通常只需要继续填写管理员账号。</p>
+                                @endif
                             </div>
                             <div class="col-span-6">
                                 <label for="host" class="block text-sm font-medium text-gray-700">数据库连接地址</label>
-                                <x-input type="text" name="host" id="host" placeholder="请输入数据库连接地址" value="{{ $databaseConfig['host'] ?? '127.0.0.1' }}"/>
+                                <x-input type="text" name="host" id="host" placeholder="请输入数据库连接地址" value="{{ $databaseHost }}"/>
                             </div>
                             <div class="col-span-6">
                                 <label for="port" class="block text-sm font-medium text-gray-700">数据库连接端口</label>
-                                <x-input type="number" name="port" id="port" placeholder="请输入数据库连接端口" value="{{ $databaseConfig['port'] ?? '3306' }}"/>
+                                <x-input type="number" name="port" id="port" placeholder="请输入数据库连接端口" value="{{ $databasePort }}"/>
                             </div>
                             <div class="col-span-6">
                                 <label for="database" class="block text-sm font-medium text-gray-700">数据库名称/路径</label>
-                                <x-input type="text" name="database" id="database" placeholder="请输入数据库名称/路径" value="{{ $databaseConfig['database'] ?? '' }}"/>
+                                <x-input type="text" name="database" id="database" placeholder="请输入数据库名称/路径" value="{{ $databaseName }}"/>
                             </div>
                             <div class="col-span-6 sm:col-span-3">
                                 <label for="username" class="block text-sm font-medium text-gray-700">数据库用户名</label>
-                                <x-input type="text" name="username" id="username" placeholder="请输入数据库用户名" value="{{ $databaseConfig['username'] ?? 'root' }}"/>
+                                <x-input type="text" name="username" id="username" placeholder="请输入数据库用户名" value="{{ $databaseUsername }}"/>
                             </div>
                             <div class="col-span-6 sm:col-span-3">
                                 <label for="password" class="block text-sm font-medium text-gray-700">数据库密码</label>
-                                <x-input type="password" name="password" id="password" placeholder="请输入数据库密码" value="{{ $databaseConfig['password'] ?? 'root' }}"/>
+                                <x-input type="password" name="password" id="password" placeholder="留空使用默认数据库密码"/>
                             </div>
                             <div class="col-span-6 sm:col-span-3">
                                 <label for="email" class="block text-sm font-medium text-gray-700"><span class="text-red-500">*</span>管理员账号邮箱</label>
@@ -175,8 +185,25 @@
                 $('#installing').hide();
                 $('#success').show();
             } else {
-                $('#response').html(response.data.message + ' ' +(response.data.data.response || '')).removeClass('hidden');
+                let detail = response.data.data && response.data.data.response ? response.data.data.response : '';
+                $('#response').html(response.data.message + (detail ? ' ' + detail : '')).removeClass('hidden');
             }
+        }).catch(error => {
+            let message = '安装请求失败，请查看应用日志。';
+            let detail = '';
+
+            if (error.response && error.response.data) {
+                if (typeof error.response.data === 'string') {
+                    detail = 'HTTP ' + error.response.status + ' ' + error.response.statusText;
+                } else {
+                    message = error.response.data.message || message;
+                    detail = error.response.data.data && error.response.data.data.response ? error.response.data.data.response : '';
+                }
+            } else if (error.message) {
+                detail = error.message;
+            }
+
+            $('#response').html(message + (detail ? ' ' + detail : '')).removeClass('hidden');
         }).finally(() => {
             $(this).attr('disabled', false).removeClass('cursor-not-allowed bg-gray-400').addClass('bg-blue-500').text('立即安装')
         });

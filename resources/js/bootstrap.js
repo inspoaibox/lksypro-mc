@@ -36,11 +36,16 @@ axios.interceptors.request.use(function (config) {
 axios.interceptors.response.use(function (response) {
     return response;
 }, function (error) {
-    if (401 === error.response.status) {
+    const status = error.response ? error.response.status : null;
+
+    if (401 === status) {
         toastr.warning('状态失效，请先登录账号');
     }
-    if (500 === error.response.status) {
+    if (500 === status) {
         toastr.warning('服务出现异常，请稍后再试');
+    }
+    if (! status) {
+        toastr.warning('网络异常，请检查服务是否正常运行');
     }
     return Promise.reject(error);
 });

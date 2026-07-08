@@ -91,9 +91,21 @@ class Controller extends BaseController
                     'account.password' => '管理员账号密码'
                 ]);
 
-                $data = collect($request->only([
-                    'connection', 'host', 'port', 'database', 'username', 'password',
-                ]))->transform(fn($item, $key) => ['--'.$key => $item])->collapse();
+                $connection = $request->input('connection') ?: config('database.default') ?: 'mysql';
+                $databaseConfig = config("database.connections.{$connection}", []);
+                $defaultPorts = ['mysql' => '3306', 'pgsql' => '5432', 'sqlsrv' => '1433'];
+                $defaults = [
+                    'connection' => $connection,
+                    'host' => ($databaseConfig['host'] ?? '') ?: ($connection === 'sqlsrv' ? 'localhost' : '127.0.0.1'),
+                    'port' => ($databaseConfig['port'] ?? '') ?: ($defaultPorts[$connection] ?? ''),
+                    'database' => ($databaseConfig['database'] ?? '') ?: '',
+                    'username' => ($databaseConfig['username'] ?? '') ?: ($connection === 'mysql' ? 'root' : ''),
+                    'password' => $databaseConfig['password'] ?? '',
+                ];
+                $data = collect($defaults)
+                    ->map(fn($default, $key) => ($request->input($key) === null || $request->input($key) === '') ? $default : $request->input($key))
+                    ->transform(fn($item, $key) => ['--'.$key => $item])
+                    ->collapse();
                 $output = new BufferedOutput();
                 $exitCode = Artisan::call('lsky:install', $data->toArray(), $output);
                 if ($exitCode) {

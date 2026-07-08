@@ -5,7 +5,7 @@ namespace App\Providers;
 use App\Enums\ConfigKey;
 use App\Models\Group;
 use App\Utils;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Encryption\Encrypter;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\View;
@@ -34,7 +34,7 @@ class AppServiceProvider extends ServiceProvider
         if (! file_exists(base_path('.env'))) {
             file_put_contents(base_path('.env'), file_get_contents(base_path('.env.example')));
             // 生成 key
-            Artisan::call('key:generate');
+            $this->setApplicationKey();
         }
 
         // 如果已经安装程序，初始化一些配置
@@ -52,5 +52,21 @@ class AppServiceProvider extends ServiceProvider
                 ]);
             });
         }
+    }
+
+    protected function setApplicationKey(): void
+    {
+        $key = 'base64:'.base64_encode(Encrypter::generateKey(config('app.cipher')));
+        $envPath = base_path('.env');
+        $contents = file_get_contents($envPath);
+
+        if (preg_match('/^APP_KEY=.*$/m', $contents)) {
+            $contents = preg_replace('/^APP_KEY=.*$/m', "APP_KEY={$key}", $contents);
+        } else {
+            $contents .= PHP_EOL."APP_KEY={$key}".PHP_EOL;
+        }
+
+        file_put_contents($envPath, $contents);
+        Config::set('app.key', $key);
     }
 }

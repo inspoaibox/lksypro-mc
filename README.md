@@ -84,7 +84,7 @@ APP_URL=http://服务器IP
 
 没有配置反向代理和 HTTPS 证书时，不要把 `APP_URL` 写成 `https://...`。
 
-安装页会自动带出数据库配置，正常只需要填写管理员邮箱和密码。
+Docker 默认使用内置 MySQL。安装页会自动带出数据库类型、地址、端口、库名和用户名，数据库密码可以留空使用 `.env.docker` 里的 `MYSQL_PASSWORD`，正常只需要填写管理员邮箱和密码。
 
 如果数据库字段没有自动带出，手动填写：
 
@@ -93,8 +93,10 @@ Host: db
 Port: 3306
 Database: lsky_prod
 Username: lsky_app
-Password: .env.docker 里的 MYSQL_PASSWORD
+Password: 留空，或填写 .env.docker 里的 MYSQL_PASSWORD
 ```
+
+如果选择 PostgreSQL、SQLite、SQL Server，需要自己准备对应数据库；当前 `docker-compose.yml` 内置的是 MySQL。
 
 ## 更新教程
 
@@ -172,6 +174,19 @@ docker compose --env-file .env.docker logs --tail=100 app
 ```
 
 如果服务器本机能访问，但外网不能访问，检查防火墙和云服务器安全组，放行 TCP `8080`。
+
+安装页提示“网络异常”通常不是数据库类型选错，而是后端返回了 500 或连接被重置。先执行：
+
+```bash
+docker compose --env-file .env.docker logs --tail=100 app
+```
+
+如果日志里出现 `Undefined constant "STDIN"`，说明服务器还在运行旧镜像，等 GitHub Actions 构建完成后重新拉取：
+
+```bash
+docker compose --env-file .env.docker pull app
+docker compose --env-file .env.docker up -d app
+```
 
 Ubuntu 防火墙示例：
 
