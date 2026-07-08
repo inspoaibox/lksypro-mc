@@ -137,12 +137,6 @@ jobs:
         run: |
           php artisan tinker --execute="App\Models\Strategy::query()->update(['configs->url' => 'http://localhost/i']); throw_unless(App\Models\Strategy::query()->first()->configs->get('url') === 'http://localhost/i');"
 
-      - name: Verify local output fallback
-        if: ${{ matrix.database == 'sqlite' }}
-        run: |
-          rm -rf public/i
-          php -d disable_functions=symlink vendor/bin/phpunit --filter LocalImageOutputTest
-
       - name: Verify login CSRF session
         if: ${{ matrix.database == 'sqlite' }}
         shell: bash
@@ -153,9 +147,14 @@ jobs:
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
         run: |
+          set -euo pipefail
+
           php artisan serve --host=127.0.0.1 --port=8081 >/tmp/lsky-serve.log 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" || true' EXIT
+
+          php -r 'exit(extension_loaded("redis") ? 0 : 1);'
+          php artisan tinker --execute="Cache::store('redis')->put('ci-redis-session-test', 'ok', 60); throw_unless(Cache::store('redis')->get('ci-redis-session-test') === 'ok');"
 
           rm -f /tmp/lsky-cookies.txt
           for i in {1..20}; do
@@ -165,7 +164,14 @@ jobs:
             sleep 1
           done
 
-          token="$(grep -oP 'name="_token" value="\K[^"]+' /tmp/lsky-login.html)"
+          token="$(grep -oP 'name="_token" value="\K[^"]+' /tmp/lsky-login.html || true)"
+          if [ -z "$token" ]; then
+            echo "Unable to read CSRF token from /login"
+            tail -n 100 /tmp/lsky-serve.log || true
+            head -n 80 /tmp/lsky-login.html || true
+            exit 1
+          fi
+
           status="$(curl -sS -o /tmp/lsky-login-post.html -w '%{http_code}' \
             -b /tmp/lsky-cookies.txt \
             -c /tmp/lsky-cookies.txt \
@@ -174,7 +180,18 @@ jobs:
             --data-urlencode "password=wrong-password" \
             http://127.0.0.1:8081/login)"
 
-          test "$status" != "419"
+          echo "Login POST status: ${status}"
+          if [ "$status" = "419" ]; then
+            tail -n 100 /tmp/lsky-serve.log || true
+            head -n 80 /tmp/lsky-login-post.html || true
+            exit 1
+          fi
+
+      - name: Verify local output fallback
+        if: ${{ matrix.database == 'sqlite' }}
+        run: |
+          rm -rf public/i
+          php -d disable_functions=symlink vendor/bin/phpunit --filter LocalImageOutputTest
 
   build:
     runs-on: ubuntu-latest
