@@ -41,7 +41,6 @@ RUN apt-get update \
         pdo_pgsql \
         pdo_sqlite \
         sockets \
-        sqlite3 \
         zip \
     && pecl install imagick redis \
     && docker-php-ext-enable imagick redis \
