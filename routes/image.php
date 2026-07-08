@@ -11,4 +11,8 @@ Route::middleware('cache.headers:public;max_age=2628000;etag')->group(function (
     Route::any('{key}.{extension}', [
         Controller::class, 'output',
     ])->where('extension', implode('|', $extensions));
+
+    Route::any('{root}/{pathname}', [
+        Controller::class, 'localOutput',
+    ])->where('pathname', '.*');
 });

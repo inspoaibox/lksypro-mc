@@ -158,13 +158,24 @@ SQL Server: 当前 Docker 镜像未内置 pdo_sqlsrv，安装页会禁用
 
 ## 更新教程
 
-先在 GitHub Actions 构建新镜像，然后服务器执行：
+先在 GitHub Actions 构建新镜像，然后服务器拉取新镜像。
+
+MySQL 方式：
 
 ```bash
 docker compose --env-file .env.docker pull app
 docker compose --env-file .env.docker up -d app
 docker compose --env-file .env.docker exec app php artisan migrate --force
 docker compose --env-file .env.docker exec app php artisan optimize:clear
+```
+
+SQLite 方式：
+
+```bash
+docker compose -f docker-compose.sqlite.yml --env-file .env.sqlite pull app
+docker compose -f docker-compose.sqlite.yml --env-file .env.sqlite up -d app
+docker compose -f docker-compose.sqlite.yml --env-file .env.sqlite exec app php artisan migrate --force
+docker compose -f docker-compose.sqlite.yml --env-file .env.sqlite exec app php artisan optimize:clear
 ```
 
 可选清理旧镜像：
@@ -245,6 +256,8 @@ docker compose --env-file .env.docker logs --tail=100 app
 docker compose --env-file .env.docker pull app
 docker compose --env-file .env.docker up -d app
 ```
+
+如果日志里出现 `symlink(): Permission denied`，这是旧镜像创建本地存储软链接失败，不是 MySQL 或 SQLite 选错。等 GitHub Actions 构建完成后重新拉取镜像，再回到安装页重试。
 
 Ubuntu 防火墙示例：
 

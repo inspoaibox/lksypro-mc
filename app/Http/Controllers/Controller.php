@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\GroupConfigKey;
+use App\Enums\StrategyKey;
 use App\Enums\UserStatus;
 use App\Enums\Watermark\Mode;
 use App\Exceptions\UploadException;
@@ -59,9 +60,12 @@ class Controller extends BaseController
             $item['result'] = extension_loaded(strtolower($item['name']));
             return $item;
         })->push([
-            'name' => 'readlink、symlink 函数',
-            'intro' => '读取、创建符号链接函数',
-            'result' => function_exists('readlink') && function_exists('symlink'),
+            'name' => '本地存储访问入口',
+            'intro' => '可创建符号链接，或 public 目录可写以启用普通目录回退',
+            'result' => (function_exists('readlink') && function_exists('symlink'))
+                || is_writable(public_path())
+                || is_dir(public_path('i'))
+                || is_link(public_path('i')),
         ])->push([
             'name' => 'putenv、getenv 函数',
             'intro' => '设置和获取环境变量函数',
@@ -188,13 +192,48 @@ class Controller extends BaseController
     {
         /** @var Image $image */
         $image = Image::query()
-            ->with('group')
+            ->with(['group', 'strategy'])
             ->where('key', $request->route('key'))
             ->where('extension', strtolower($request->route('extension')))
             ->firstOr(fn() => abort(404));
         if (! $image->group?->configs->get(GroupConfigKey::IsEnableOriginalProtection)) {
             abort(404);
         }
+
+        return $this->streamImage($image, $service);
+    }
+
+    public function localOutput(Request $request, ImageService $service, string $root, string $pathname): StreamedResponse
+    {
+        $pathname = trim(str_replace('\\', '/', $pathname), '/');
+        if ($pathname === '' || str_contains($pathname, '..')) {
+            abort(404);
+        }
+
+        $path = dirname($pathname);
+        $path = $path === '.' ? '' : trim($path, '/');
+        $name = basename($pathname);
+
+        /** @var Image $image */
+        $image = Image::query()
+            ->with(['group', 'strategy'])
+            ->where('name', $name)
+            ->where('path', $path)
+            ->whereHas('strategy', fn ($query) => $query->where('key', StrategyKey::Local))
+            ->get()
+            ->first(function (Image $image) use ($root) {
+                return Strategy::getRootPath($image->strategy?->configs->get('url')) === $root;
+            }) ?: abort(404);
+
+        if ($image->group?->configs->get(GroupConfigKey::IsEnableOriginalProtection)) {
+            abort(404);
+        }
+
+        return $this->streamImage($image, $service);
+    }
+
+    protected function streamImage(Image $image, ImageService $service): StreamedResponse
+    {
         try {
             $cacheKey = "image_{$image->key}";
 

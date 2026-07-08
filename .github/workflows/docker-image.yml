@@ -92,13 +92,15 @@ jobs:
       - name: Install database
         shell: bash
         run: |
+          PHP=(php -d disable_functions=symlink)
+
           case "${{ matrix.database }}" in
             sqlite)
-              php artisan lsky:install \
+              "${PHP[@]}" artisan lsky:install \
                 --connection=sqlite
               ;;
             mysql)
-              php artisan lsky:install \
+              "${PHP[@]}" artisan lsky:install \
                 --connection=mysql \
                 --host=127.0.0.1 \
                 --port=3306 \
@@ -107,7 +109,7 @@ jobs:
                 --password=lsky
               ;;
             pgsql)
-              php artisan lsky:install \
+              "${PHP[@]}" artisan lsky:install \
                 --connection=pgsql \
                 --host=127.0.0.1 \
                 --port=5432 \
@@ -120,6 +122,12 @@ jobs:
       - name: Verify JSON update
         run: |
           php artisan tinker --execute="App\Models\Strategy::query()->update(['configs->url' => 'http://localhost/i']); throw_unless(App\Models\Strategy::query()->first()->configs->get('url') === 'http://localhost/i');"
+
+      - name: Verify local output fallback
+        if: ${{ matrix.database == 'sqlite' }}
+        run: |
+          rm -rf public/i
+          php -d disable_functions=symlink vendor/bin/phpunit --filter LocalImageOutputTest
 
   build:
     runs-on: ubuntu-latest

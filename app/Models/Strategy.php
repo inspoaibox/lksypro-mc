@@ -72,15 +72,13 @@ class Strategy extends Model
             if ($strategy->key == StrategyKey::Local) {
                 $symlink = self::getRootPath($strategy->configs['url']);
                 $target = $strategy->configs['root'] ?: config('filesystems.disks.uploads.root');
-                if (! is_dir(public_path($symlink))) {
-                    (new Filesystem())->link($target, $symlink);
-                }
+                self::ensureLocalPath($symlink, $target);
                 // 是否需要移除旧的符号链接
                 $url = $strategy->getOriginal('configs')['url'] ?? '';
                 if ($url) {
                     $oldSymlink = self::getRootPath($url);
                     if ($oldSymlink != $symlink) {
-                        @unlink($oldSymlink);
+                        self::removeLocalSymlink($oldSymlink);
                     }
                 }
             }
@@ -90,9 +88,74 @@ class Strategy extends Model
             // 如果是本地策略，删除的时候同时删除符号连接
             if ($strategy->key === StrategyKey::Local) {
                 $symlink = self::getRootPath($strategy->configs['url']);
-                @unlink(public_path($symlink));
+                self::removeLocalSymlink($symlink);
             }
         });
+    }
+
+    protected static function ensureLocalPath(string $symlink, string $target): void
+    {
+        $filesystem = new Filesystem();
+        $link = public_path($symlink);
+
+        if (! is_dir($target)) {
+            $filesystem->makeDirectory($target, 0755, true);
+        }
+
+        if (is_link($link)) {
+            if (! function_exists('readlink')) {
+                return;
+            }
+
+            $currentTarget = readlink($link);
+            $realCurrentTarget = self::realLinkTarget($link, $currentTarget);
+            $realTarget = realpath($target);
+
+            if ($currentTarget === $target || ($realCurrentTarget && $realCurrentTarget === $realTarget)) {
+                return;
+            }
+            @unlink($link);
+        }
+
+        if (is_dir($link)) {
+            return;
+        }
+
+        if (file_exists($link)) {
+            throw new \RuntimeException("Public path already exists: {$symlink}");
+        }
+
+        if (! is_dir(dirname($link))) {
+            $filesystem->makeDirectory(dirname($link), 0755, true);
+        }
+
+        try {
+            $filesystem->link($target, $link);
+        } catch (\Throwable) {
+            $filesystem->makeDirectory($link, 0755, true);
+        }
+    }
+
+    protected static function realLinkTarget(string $link, $target)
+    {
+        if (! $target) {
+            return false;
+        }
+
+        if (str_starts_with($target, DIRECTORY_SEPARATOR) || preg_match('/^[A-Za-z]:[\\\\\/]/', $target)) {
+            return realpath($target);
+        }
+
+        return realpath(dirname($link).DIRECTORY_SEPARATOR.$target) ?: realpath($target);
+    }
+
+    protected static function removeLocalSymlink(string $symlink): void
+    {
+        $link = public_path($symlink);
+
+        if (is_link($link)) {
+            @unlink($link);
+        }
     }
 
     public static function getRootPath($url): string

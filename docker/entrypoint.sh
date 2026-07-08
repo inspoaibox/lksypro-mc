@@ -12,6 +12,10 @@ mkdir -p \
     storage/runtime \
     bootstrap/cache
 
+if [ ! -e public/i ] && [ ! -L public/i ]; then
+    ln -s ../storage/app/uploads public/i 2>/dev/null || mkdir -p public/i
+fi
+
 if [ ! -e storage/runtime/.env ]; then
     cp .env.example storage/runtime/.env
 fi
@@ -52,6 +56,8 @@ for key in APP_ENV APP_DEBUG APP_URL DB_CONNECTION DB_HOST DB_PORT DB_DATABASE D
 done
 
 chown -R www-data:www-data storage bootstrap/cache
+chown www-data:www-data public
+chown -h www-data:www-data public/i 2>/dev/null || true
 chmod -R ug+rwX storage bootstrap/cache
 
 if ! grep -Eq '^APP_KEY=.+$' storage/runtime/.env; then

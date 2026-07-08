@@ -97,6 +97,7 @@ RUN chmod +x /usr/local/bin/lsky-entrypoint \
         storage/logs \
         storage/runtime \
         bootstrap/cache \
+    && chown www-data:www-data public \
     && chown -R www-data:www-data storage bootstrap/cache
 
 ENTRYPOINT ["lsky-entrypoint"]
