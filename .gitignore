@@ -9,6 +9,7 @@
 /vendor
 .env
 .env.backup
+.env.sqlite
 .phpunit.result.cache
 docker-compose.override.yml
 .env.docker

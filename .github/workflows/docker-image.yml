@@ -94,10 +94,8 @@ jobs:
         run: |
           case "${{ matrix.database }}" in
             sqlite)
-              touch database/database.sqlite
               php artisan lsky:install \
-                --connection=sqlite \
-                --database=database/database.sqlite
+                --connection=sqlite
               ;;
             mysql)
               php artisan lsky:install \

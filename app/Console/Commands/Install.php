@@ -92,9 +92,16 @@ class Install extends Command
         clearstatcache(true);
 
         try {
-            if ($options['connection'] === 'sqlite' && ! $options['database']) {
-                $options['database'] = database_path('database.sqlite');
-                file_put_contents($options['database'], '');
+            if ($options['connection'] === 'sqlite') {
+                if (! $options['database']) {
+                    $options['database'] = storage_path('runtime/database.sqlite');
+                }
+                if (! is_dir(dirname($options['database']))) {
+                    mkdir(dirname($options['database']), 0755, true);
+                }
+                if (! file_exists($options['database'])) {
+                    touch($options['database']);
+                }
                 Config::set('database.connections.sqlite.database', $options['database']);
             }
             // 执行数据库迁移

@@ -23,7 +23,58 @@ git clone https://github.com/inspoaibox/lksypro-mc.git
 cd lksypro-mc
 ```
 
-如果服务器不放完整代码，至少要上传仓库根目录里的这两个文件：
+如果服务器不放完整代码，SQLite 方式至少上传：
+
+```text
+docker-compose.sqlite.yml
+.env.sqlite.example
+```
+
+MySQL 方式至少上传：
+
+```text
+docker-compose.yml
+.env.docker.example
+```
+
+### SQLite 快速安装
+
+SQLite 不需要数据库服务器，最简单。数据文件保存在 Docker volume 的 `storage/runtime/database.sqlite`。
+
+```bash
+cp .env.sqlite.example .env.sqlite
+```
+
+编辑 `.env.sqlite`：
+
+```env
+LSKY_IMAGE=ghcr.io/inspoaibox/lksypro-mc:latest
+APP_PORT=8080
+APP_URL=http://服务器IP:8080
+
+SQLITE_DATABASE=/var/www/html/storage/runtime/database.sqlite
+```
+
+启动：
+
+```bash
+docker compose -f docker-compose.sqlite.yml --env-file .env.sqlite pull
+docker compose -f docker-compose.sqlite.yml --env-file .env.sqlite up -d
+```
+
+浏览器访问：
+
+```text
+http://服务器IP:8080
+```
+
+安装页选择 `SQLite`，正常只需要填写管理员邮箱和密码。
+
+### MySQL 安装
+
+MySQL 更适合长期生产使用，当前默认 `docker-compose.yml` 会内置 MySQL 8。
+
+如果服务器不放完整代码，至少要上传：
 
 ```text
 docker-compose.yml
@@ -96,12 +147,12 @@ Username: lsky_app
 Password: 留空，或填写 .env.docker 里的 MYSQL_PASSWORD
 ```
 
-当前 `docker-compose.yml` 内置的是 MySQL。镜像会检查当前 PHP 驱动后显示可用数据库：
+镜像会检查当前 PHP 驱动后显示可用数据库：
 
 ```text
 MySQL: Docker 默认，推荐使用
 PostgreSQL: 需要自己准备 PostgreSQL 数据库
-SQLite: 可用于轻量测试，不推荐生产存大量图片数据
+SQLite: 最简单，不需要数据库服务器
 SQL Server: 当前 Docker 镜像未内置 pdo_sqlsrv，安装页会禁用
 ```
 

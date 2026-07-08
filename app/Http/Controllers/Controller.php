@@ -102,11 +102,14 @@ class Controller extends BaseController
                 }
                 $databaseConfig = config("database.connections.{$connection}", []);
                 $defaultPorts = ['mysql' => '3306', 'pgsql' => '5432', 'sqlsrv' => '1433'];
+                $defaultDatabase = ($connection === 'sqlite' && config('database.default') !== 'sqlite')
+                    ? storage_path('runtime/database.sqlite')
+                    : (($databaseConfig['database'] ?? '') ?: '');
                 $defaults = [
                     'connection' => $connection,
                     'host' => ($databaseConfig['host'] ?? '') ?: ($connection === 'sqlsrv' ? 'localhost' : '127.0.0.1'),
                     'port' => ($databaseConfig['port'] ?? '') ?: ($defaultPorts[$connection] ?? ''),
-                    'database' => ($databaseConfig['database'] ?? '') ?: '',
+                    'database' => $defaultDatabase,
                     'username' => ($databaseConfig['username'] ?? '') ?: ($connection === 'mysql' ? 'root' : ''),
                     'password' => $databaseConfig['password'] ?? '',
                 ];

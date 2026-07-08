@@ -77,6 +77,12 @@
                     $databaseName = $databaseValue('database');
                     $databaseUsername = $databaseValue('username', $databaseConnection === 'mysql' ? 'root' : '');
                     $isDockerDatabase = $databaseConnection === 'mysql' && $databaseHost === 'db';
+                    $databaseDefaults = [
+                        'mysql' => ['host' => $databaseHost === 'db' ? 'db' : '127.0.0.1', 'port' => '3306', 'database' => $databaseConnection === 'mysql' ? $databaseName : '', 'username' => $databaseConnection === 'mysql' ? $databaseUsername : 'root'],
+                        'pgsql' => ['host' => '127.0.0.1', 'port' => '5432', 'database' => '', 'username' => ''],
+                        'sqlite' => ['host' => '', 'port' => '', 'database' => storage_path('runtime/database.sqlite'), 'username' => ''],
+                        'sqlsrv' => ['host' => 'localhost', 'port' => '1433', 'database' => '', 'username' => ''],
+                    ];
                 @endphp
                 <form class="w-full" method="post">
                     @csrf
@@ -151,6 +157,8 @@
 </div>
 </body>
 <script>
+    const databaseDefaults = @json($databaseDefaults);
+
     $('#next').click(function () {
         $('#checking').remove();
         $('#installing').removeClass('hidden');
@@ -158,13 +166,19 @@
 
     $('#connection').change(function () {
         let selector = '#host, #port, #username, #password';
+        let defaults = databaseDefaults[$(this).val()] || {};
+        $('#host').val(defaults.host || '');
+        $('#port').val(defaults.port || '');
+        $('#database').val(defaults.database || '');
+        $('#username').val(defaults.username || '');
+        $('#password').val('');
         $(selector).parent().show();
         let message = '';
         switch ($(this).val()) {
             case 'pgsql':
                 break;
             case 'sqlite':
-                message = 'SQLite 数据库本质上只是一个存在你文件系统上的文件，下面的数据库路径如果为空，程序将会自动在根目录 database 文件夹中创建 database.sqlite 文件，否则请填写该数据库文件的绝对路径。';
+                message = 'SQLite 不需要数据库服务器，程序会使用下面这个持久化文件保存数据。';
                 $(selector).parent().hide();
                 break;
             case 'sqlsrv':
