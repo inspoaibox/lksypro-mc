@@ -119,6 +119,11 @@ jobs:
               ;;
           esac
 
+      - name: Verify persistent install lock
+        run: |
+          test -f storage/runtime/installed.lock
+          php artisan tinker --execute="throw_unless(App\Support\Installed::exists());"
+
       - name: Verify JSON update
         run: |
           php artisan tinker --execute="App\Models\Strategy::query()->update(['configs->url' => 'http://localhost/i']); throw_unless(App\Models\Strategy::query()->first()->configs->get('url') === 'http://localhost/i');"

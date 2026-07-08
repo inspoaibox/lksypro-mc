@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Installed;
 use App\Utils;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
@@ -50,8 +51,8 @@ class Install extends Command
     public function handle(): int
     {
         // 判断是否已经安装
-        if (file_exists(base_path('installed.lock'))) {
-            $this->warn('Already installed. if you want to reinstall, please remove installed.lock file.');
+        if (Installed::exists()) {
+            $this->warn('Already installed. if you want to reinstall, please remove installed.lock and storage/runtime/installed.lock files.');
             return 0;
         }
 
@@ -116,7 +117,7 @@ class Install extends Command
                 file_get_contents($this->laravel->environmentFilePath())
             ));
             // 创建锁文件
-            file_put_contents(base_path('installed.lock'), '');
+            Installed::create();
         } catch (\Throwable $e) {
             $this->warn("Installation error!\n");
             $this->error($e->getMessage());

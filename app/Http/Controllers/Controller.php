@@ -13,6 +13,7 @@ use App\Models\Image;
 use App\Models\Strategy;
 use App\Models\User;
 use App\Services\ImageService;
+use App\Support\Installed;
 use App\Utils;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
@@ -36,9 +37,9 @@ class Controller extends BaseController
 
     public function install(Request $request): View|Response
     {
-        if (file_exists(base_path('installed.lock'))) {
+        if (Installed::exists()) {
             if ($request->expectsJson()) {
-                return $this->fail('Already installed. if you want to reinstall, please remove installed.lock file.');
+                return $this->fail('Already installed. if you want to reinstall, please remove installed.lock and storage/runtime/installed.lock files.');
             }
             abort(404);
         }
@@ -140,7 +141,7 @@ class Controller extends BaseController
                 Strategy::query()->update(['configs->url' => $request->getSchemeAndHttpHost().'/i']);
                 $user->save();
             } catch (\Throwable $e) {
-                @unlink(base_path('installed.lock'));
+                Installed::remove();
                 Utils::e($e, '执行安装程序时出现异常');
                 return $this->fail($e->getMessage());
             }

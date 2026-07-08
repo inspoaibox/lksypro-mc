@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Enums\ConfigKey;
 use App\Models\Group;
+use App\Support\Installed;
 use App\Utils;
 use Illuminate\Encryption\Encrypter;
 use Illuminate\Support\Facades\Auth;
@@ -38,7 +39,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // 如果已经安装程序，初始化一些配置
-        if (file_exists(base_path('installed.lock'))) {
+        if (Installed::exists()) {
             // 覆盖默认配置
             Config::set('app.name', Utils::config(ConfigKey::AppName));
             Config::set('mail', array_merge(\config('mail'), Utils::config(ConfigKey::Mail)->toArray()));
