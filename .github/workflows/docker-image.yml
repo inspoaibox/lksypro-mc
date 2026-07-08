@@ -24,8 +24,108 @@ env:
   IMAGE_NAME: inspoaibox/lksypro-mc
 
 jobs:
+  install-tests:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        database:
+          - sqlite
+          - mysql
+          - pgsql
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: lsky_test
+          MYSQL_USER: lsky
+          MYSQL_PASSWORD: lsky
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ulsky -plsky --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: lsky_test
+          POSTGRES_USER: lsky
+          POSTGRES_PASSWORD: lsky
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -h 127.0.0.1 -U lsky -d lsky_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: bcmath, curl, dom, fileinfo, gd, imagick, intl, mbstring, pdo_mysql, pdo_pgsql, pdo_sqlite, xml, zip
+          coverage: none
+
+      - name: Copy env
+        run: php -r "file_exists('.env') || copy('.env.example', '.env');"
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Generate application key
+        run: php artisan key:generate --force
+
+      - name: Prepare writable paths
+        run: |
+          chmod -R 777 storage bootstrap/cache
+          mkdir -p database
+
+      - name: Install database
+        shell: bash
+        run: |
+          case "${{ matrix.database }}" in
+            sqlite)
+              touch database/database.sqlite
+              php artisan lsky:install \
+                --connection=sqlite \
+                --database=database/database.sqlite
+              ;;
+            mysql)
+              php artisan lsky:install \
+                --connection=mysql \
+                --host=127.0.0.1 \
+                --port=3306 \
+                --database=lsky_test \
+                --username=lsky \
+                --password=lsky
+              ;;
+            pgsql)
+              php artisan lsky:install \
+                --connection=pgsql \
+                --host=127.0.0.1 \
+                --port=5432 \
+                --database=lsky_test \
+                --username=lsky \
+                --password=lsky
+              ;;
+          esac
+
+      - name: Verify JSON update
+        run: |
+          php artisan tinker --execute="App\Models\Strategy::query()->update(['configs->url' => 'http://localhost/i']); throw_unless(App\Models\Strategy::query()->first()->configs->get('url') === 'http://localhost/i');"
+
   build:
     runs-on: ubuntu-latest
+    needs: install-tests
 
     steps:
       - name: Checkout

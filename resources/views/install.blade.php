@@ -64,7 +64,11 @@
                 <p class="text-md mb-4 block text-center">Step 2 > 配置数据库和管理员账号</p>
 
                 @php
+                    $availableDatabaseDrivers = collect($databaseDrivers)->where('available', true)->pluck('value');
                     $databaseConnection = config('database.default') ?: 'mysql';
+                    if (! $availableDatabaseDrivers->contains($databaseConnection) && $availableDatabaseDrivers->isNotEmpty()) {
+                        $databaseConnection = $availableDatabaseDrivers->first();
+                    }
                     $databaseConfig = config("database.connections.{$databaseConnection}", []);
                     $defaultPorts = ['mysql' => '3306', 'pgsql' => '5432', 'sqlsrv' => '1433'];
                     $databaseValue = fn (string $key, string $default = '') => filled($databaseConfig[$key] ?? null) ? $databaseConfig[$key] : $default;
@@ -81,10 +85,11 @@
                             <div class="col-span-6">
                                 <label for="connection" class="block text-sm font-medium text-gray-700">数据库类型</label>
                                 <x-select id="connection" name="connection">
-                                    <option value="mysql" @selected($databaseConnection === 'mysql')>MySQL 5.7+</option>
-                                    <option value="pgsql" @selected($databaseConnection === 'pgsql')>PostgreSQL 9.6+</option>
-                                    <option value="sqlite" @selected($databaseConnection === 'sqlite')>SQLite 3.8.8+</option>
-                                    <option value="sqlsrv" @selected($databaseConnection === 'sqlsrv')>SQL Server 2017+</option>
+                                    @foreach($databaseDrivers as $driver)
+                                        <option value="{{ $driver['value'] }}" @selected($databaseConnection === $driver['value']) @disabled(! $driver['available'])>
+                                            {{ $driver['label'] }}{{ $driver['available'] ? '' : '（当前环境未启用 '.$driver['extension'].'）' }}
+                                        </option>
+                                    @endforeach
                                 </x-select>
                                 <p class="mt-2 text-sm text-red-500 hidden"></p>
                                 @if($isDockerDatabase)

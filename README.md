@@ -96,7 +96,14 @@ Username: lsky_app
 Password: 留空，或填写 .env.docker 里的 MYSQL_PASSWORD
 ```
 
-如果选择 PostgreSQL、SQLite、SQL Server，需要自己准备对应数据库；当前 `docker-compose.yml` 内置的是 MySQL。
+当前 `docker-compose.yml` 内置的是 MySQL。镜像会检查当前 PHP 驱动后显示可用数据库：
+
+```text
+MySQL: Docker 默认，推荐使用
+PostgreSQL: 需要自己准备 PostgreSQL 数据库
+SQLite: 可用于轻量测试，不推荐生产存大量图片数据
+SQL Server: 当前 Docker 镜像未内置 pdo_sqlsrv，安装页会禁用
+```
 
 ## 更新教程
 

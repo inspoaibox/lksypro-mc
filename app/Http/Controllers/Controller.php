@@ -22,6 +22,7 @@ use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Intervention\Image\Facades\Image as InterventionImage;
 use League\Flysystem\FilesystemException;
@@ -80,18 +81,25 @@ class Controller extends BaseController
         ]);
 
         $status = ! $extensions->where('result', false)->isNotEmpty();
+        $databaseDrivers = $this->databaseDrivers();
 
         if ($request->method() === 'POST') {
             try {
                 $request->validate([
+                    'connection' => ['required', Rule::in(array_keys($this->databaseDriverExtensions()))],
                     'account.email' => 'required|email',
                     'account.password' => 'required|between:6,32'
                 ], [], [
+                    'connection' => '数据库类型',
                     'account.email' => '管理员账号邮箱',
                     'account.password' => '管理员账号密码'
                 ]);
 
                 $connection = $request->input('connection') ?: config('database.default') ?: 'mysql';
+                $extension = $this->databaseDriverExtensions()[$connection];
+                if (! extension_loaded($extension)) {
+                    throw new \Exception("当前 PHP 环境未启用 {$extension} 扩展，无法使用该数据库类型。");
+                }
                 $databaseConfig = config("database.connections.{$connection}", []);
                 $defaultPorts = ['mysql' => '3306', 'pgsql' => '5432', 'sqlsrv' => '1433'];
                 $defaults = [
@@ -132,7 +140,27 @@ class Controller extends BaseController
             return $this->success();
         }
 
-        return view('install', compact('extensions', 'status'));
+        return view('install', compact('extensions', 'status', 'databaseDrivers'));
+    }
+
+    protected function databaseDrivers(): array
+    {
+        return collect([
+            'mysql' => ['label' => 'MySQL 5.7+', 'extension' => 'pdo_mysql'],
+            'pgsql' => ['label' => 'PostgreSQL 9.6+', 'extension' => 'pdo_pgsql'],
+            'sqlite' => ['label' => 'SQLite 3.8.8+', 'extension' => 'pdo_sqlite'],
+            'sqlsrv' => ['label' => 'SQL Server 2017+', 'extension' => 'pdo_sqlsrv'],
+        ])->map(fn ($driver, $value) => [
+            'value' => $value,
+            'label' => $driver['label'],
+            'extension' => $driver['extension'],
+            'available' => extension_loaded($driver['extension']),
+        ])->values()->all();
+    }
+
+    protected function databaseDriverExtensions(): array
+    {
+        return collect($this->databaseDrivers())->pluck('extension', 'value')->all();
     }
 
     public function upload(Request $request, ImageService $service): Response

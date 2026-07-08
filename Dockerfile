@@ -19,6 +19,7 @@ RUN apt-get update \
         libonig-dev \
         libpng-dev \
         libpq-dev \
+        libsqlite3-dev \
         libwebp-dev \
         libxml2-dev \
         libzip-dev \
@@ -38,7 +39,9 @@ RUN apt-get update \
         pcntl \
         pdo_mysql \
         pdo_pgsql \
+        pdo_sqlite \
         sockets \
+        sqlite3 \
         zip \
     && pecl install imagick redis \
     && docker-php-ext-enable imagick redis \

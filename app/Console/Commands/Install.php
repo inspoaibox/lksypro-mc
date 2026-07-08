@@ -56,6 +56,23 @@ class Install extends Command
         }
 
         $driver = $this->option('connection');
+        $driverExtensions = [
+            'mysql' => 'pdo_mysql',
+            'pgsql' => 'pdo_pgsql',
+            'sqlite' => 'pdo_sqlite',
+            'sqlsrv' => 'pdo_sqlsrv',
+        ];
+
+        if (! array_key_exists($driver, $driverExtensions)) {
+            $this->error("Unsupported database type: {$driver}");
+            return 1;
+        }
+
+        if (! extension_loaded($driverExtensions[$driver])) {
+            $this->error("PHP extension {$driverExtensions[$driver]} is not enabled.");
+            return 1;
+        }
+
         $connection = "database.connections.{$driver}";
         $options = [
             'connection' => $this->option('connection'),
