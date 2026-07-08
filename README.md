@@ -52,6 +52,7 @@ LSKY_IMAGE=ghcr.io/inspoaibox/lksypro-mc:latest
 APP_PORT=8080
 APP_URL=http://服务器IP:8080
 SESSION_DRIVER=redis
+SESSION_ENCRYPT_COOKIE=false
 REDIS_PASSWORD=随机密码
 
 SQLITE_DATABASE=/var/www/html/storage/runtime/database.sqlite
@@ -104,6 +105,7 @@ LSKY_IMAGE=ghcr.io/inspoaibox/lksypro-mc:latest
 APP_PORT=8080
 APP_URL=http://服务器IP:8080
 SESSION_DRIVER=redis
+SESSION_ENCRYPT_COOKIE=false
 REDIS_PASSWORD=上面生成的 Redis 随机密码
 
 MYSQL_DATABASE=lsky_prod
@@ -267,7 +269,7 @@ docker compose --env-file .env.docker up -d --force-recreate
 
 如果日志里出现 `symlink(): Permission denied`，这是旧镜像创建本地存储软链接失败，不是 MySQL 或 SQLite 选错。等 GitHub Actions 构建完成后重新拉取镜像，再回到安装页重试。
 
-登录提示 `419 页面会话已超时` 时，说明登录页发下来的会话没有被 POST 请求识别。当前 Docker 默认使用 `SESSION_DRIVER=redis`，请确认服务器已 `git pull` 到最新 compose 文件，`.env.docker` 里 `SESSION_DRIVER=redis` 且 `REDIS_PASSWORD` 非空，然后重新拉取并重建容器。
+登录提示 `419 页面会话已超时` 时，说明登录页发下来的会话没有被下一次请求识别。当前 Docker 默认使用 `SESSION_DRIVER=redis` 和 `SESSION_ENCRYPT_COOKIE=false`，请确认服务器已 `git pull` 到最新 compose 文件，`.env.docker` 里 `SESSION_DRIVER=redis`、`SESSION_ENCRYPT_COOKIE=false` 且 `REDIS_PASSWORD` 非空，然后重新拉取并重建容器。
 
 Ubuntu 防火墙示例：
 

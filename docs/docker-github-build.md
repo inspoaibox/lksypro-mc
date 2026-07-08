@@ -22,6 +22,7 @@ openssl rand -base64 32
 ```env
 APP_URL=https://你的域名
 SESSION_DRIVER=redis
+SESSION_ENCRYPT_COOKIE=false
 REDIS_PASSWORD=随机密码
 MYSQL_DATABASE=lsky_prod
 MYSQL_USER=lsky_app

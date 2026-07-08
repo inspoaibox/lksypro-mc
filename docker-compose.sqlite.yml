@@ -13,6 +13,7 @@ services:
       CACHE_DRIVER: redis
       QUEUE_CONNECTION: sync
       SESSION_DRIVER: ${SESSION_DRIVER:-redis}
+      SESSION_ENCRYPT_COOKIE: ${SESSION_ENCRYPT_COOKIE:-false}
       SESSION_CONNECTION: default
       REDIS_HOST: redis
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.sqlite}

@@ -48,6 +48,8 @@ return [
 
     'encrypt' => false,
 
+    'encrypt_cookie' => env('SESSION_ENCRYPT_COOKIE', true),
+
     /*
     |--------------------------------------------------------------------------
     | Session File Location
