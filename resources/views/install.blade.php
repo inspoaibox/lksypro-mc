@@ -75,6 +75,7 @@
                     $isDockerDatabase = $databaseConnection === 'mysql' && $databaseHost === 'db';
                 @endphp
                 <form class="w-full" method="post">
+                    @csrf
                     <div class="px-3 py-4 bg-white sm:p-6">
                         <div class="grid grid-cols-6 gap-6">
                             <div class="col-span-6">
