@@ -12,7 +12,7 @@ services:
       DB_DATABASE: ${SQLITE_DATABASE:-/var/www/html/storage/runtime/database.sqlite}
       CACHE_DRIVER: file
       QUEUE_CONNECTION: sync
-      SESSION_DRIVER: file
+      SESSION_DRIVER: ${SESSION_DRIVER:-cookie}
     volumes:
       - lsky_storage:/var/www/html/storage
       - lsky_bootstrap_cache:/var/www/html/bootstrap/cache

@@ -51,6 +51,11 @@ set_env_if_present() {
     fi
 }
 
+if [ "${SESSION_DRIVER:-}" = "" ] || [ "${SESSION_DRIVER:-}" = "file" ]; then
+    SESSION_DRIVER="${LSKY_SESSION_DRIVER:-cookie}"
+fi
+export SESSION_DRIVER
+
 for key in APP_ENV APP_DEBUG APP_URL DB_CONNECTION DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD CACHE_DRIVER QUEUE_CONNECTION SESSION_DRIVER SESSION_DOMAIN SESSION_SECURE_COOKIE; do
     set_env_if_present "$key"
 done

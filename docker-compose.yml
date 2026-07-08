@@ -16,7 +16,7 @@ services:
       DB_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env.docker}
       CACHE_DRIVER: file
       QUEUE_CONNECTION: sync
-      SESSION_DRIVER: file
+      SESSION_DRIVER: ${SESSION_DRIVER:-cookie}
     depends_on:
       db:
         condition: service_healthy

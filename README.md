@@ -51,6 +51,7 @@ cp .env.sqlite.example .env.sqlite
 LSKY_IMAGE=ghcr.io/inspoaibox/lksypro-mc:latest
 APP_PORT=8080
 APP_URL=http://服务器IP:8080
+SESSION_DRIVER=cookie
 
 SQLITE_DATABASE=/var/www/html/storage/runtime/database.sqlite
 ```
@@ -100,6 +101,7 @@ openssl rand -base64 32
 LSKY_IMAGE=ghcr.io/inspoaibox/lksypro-mc:latest
 APP_PORT=8080
 APP_URL=http://服务器IP:8080
+SESSION_DRIVER=cookie
 
 MYSQL_DATABASE=lsky_prod
 MYSQL_USER=lsky_app
@@ -258,6 +260,8 @@ docker compose --env-file .env.docker up -d app
 ```
 
 如果日志里出现 `symlink(): Permission denied`，这是旧镜像创建本地存储软链接失败，不是 MySQL 或 SQLite 选错。等 GitHub Actions 构建完成后重新拉取镜像，再回到安装页重试。
+
+登录提示 `419 页面会话已超时` 时，先确认已拉取最新镜像。Docker 默认使用 `SESSION_DRIVER=cookie`，避免文件会话在容器中读写不稳定。
 
 Ubuntu 防火墙示例：
 
