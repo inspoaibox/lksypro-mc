@@ -63,6 +63,15 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
 
     steps:
       - name: Checkout
@@ -72,7 +81,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: bcmath, curl, dom, fileinfo, gd, imagick, intl, mbstring, pdo_mysql, pdo_pgsql, pdo_sqlite, xml, zip
+          extensions: bcmath, curl, dom, fileinfo, gd, imagick, intl, mbstring, pdo_mysql, pdo_pgsql, pdo_sqlite, redis, xml, zip
           coverage: none
 
       - name: Copy env
@@ -138,7 +147,11 @@ jobs:
         if: ${{ matrix.database == 'sqlite' }}
         shell: bash
         env:
-          SESSION_DRIVER: cookie
+          CACHE_DRIVER: redis
+          SESSION_DRIVER: redis
+          SESSION_CONNECTION: default
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
         run: |
           php artisan serve --host=127.0.0.1 --port=8081 >/tmp/lsky-serve.log 2>&1 &
           server_pid=$!

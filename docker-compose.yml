@@ -14,11 +14,17 @@ services:
       DB_DATABASE: ${MYSQL_DATABASE:?Set MYSQL_DATABASE in .env.docker}
       DB_USERNAME: ${MYSQL_USER:?Set MYSQL_USER in .env.docker}
       DB_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env.docker}
-      CACHE_DRIVER: file
+      CACHE_DRIVER: redis
       QUEUE_CONNECTION: sync
-      SESSION_DRIVER: ${SESSION_DRIVER:-cookie}
+      SESSION_DRIVER: ${SESSION_DRIVER:-redis}
+      SESSION_CONNECTION: default
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.docker}
+      REDIS_PORT: 6379
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - lsky_storage:/var/www/html/storage
@@ -41,7 +47,22 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["sh", "-c", "redis-server --appendonly yes --requirepass \"$${REDIS_PASSWORD}\""]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.docker}
+    volumes:
+      - lsky_redis:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
 volumes:
   lsky_storage:
   lsky_bootstrap_cache:
   lsky_mysql:
+  lsky_redis:

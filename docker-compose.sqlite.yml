@@ -10,13 +10,35 @@ services:
       APP_URL: ${APP_URL:-http://localhost:8080}
       DB_CONNECTION: sqlite
       DB_DATABASE: ${SQLITE_DATABASE:-/var/www/html/storage/runtime/database.sqlite}
-      CACHE_DRIVER: file
+      CACHE_DRIVER: redis
       QUEUE_CONNECTION: sync
-      SESSION_DRIVER: ${SESSION_DRIVER:-cookie}
+      SESSION_DRIVER: ${SESSION_DRIVER:-redis}
+      SESSION_CONNECTION: default
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.sqlite}
+      REDIS_PORT: 6379
+    depends_on:
+      redis:
+        condition: service_healthy
     volumes:
       - lsky_storage:/var/www/html/storage
       - lsky_bootstrap_cache:/var/www/html/bootstrap/cache
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["sh", "-c", "redis-server --appendonly yes --requirepass \"$${REDIS_PASSWORD}\""]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.sqlite}
+    volumes:
+      - lsky_redis:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
 volumes:
   lsky_storage:
   lsky_bootstrap_cache:
+  lsky_redis:

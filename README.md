@@ -39,7 +39,7 @@ docker-compose.yml
 
 ### SQLite 快速安装
 
-SQLite 不需要数据库服务器，最简单。数据文件保存在 Docker volume 的 `storage/runtime/database.sqlite`。
+SQLite 不需要 MySQL/PostgreSQL，最简单。数据文件保存在 Docker volume 的 `storage/runtime/database.sqlite`。
 
 ```bash
 cp .env.sqlite.example .env.sqlite
@@ -51,7 +51,8 @@ cp .env.sqlite.example .env.sqlite
 LSKY_IMAGE=ghcr.io/inspoaibox/lksypro-mc:latest
 APP_PORT=8080
 APP_URL=http://服务器IP:8080
-SESSION_DRIVER=cookie
+SESSION_DRIVER=redis
+REDIS_PASSWORD=随机密码
 
 SQLITE_DATABASE=/var/www/html/storage/runtime/database.sqlite
 ```
@@ -73,7 +74,7 @@ http://服务器IP:8080
 
 ### MySQL 安装
 
-MySQL 更适合长期生产使用，当前默认 `docker-compose.yml` 会内置 MySQL 8。
+MySQL 更适合长期生产使用，当前默认 `docker-compose.yml` 会内置 MySQL 8 和 Redis。
 
 如果服务器不放完整代码，至少要上传：
 
@@ -88,9 +89,10 @@ docker-compose.yml
 cp .env.docker.example .env.docker
 ```
 
-生成两个随机密码：
+生成三个随机密码，分别填给 MySQL 用户、MySQL root、Redis：
 
 ```bash
+openssl rand -base64 32
 openssl rand -base64 32
 openssl rand -base64 32
 ```
@@ -101,7 +103,8 @@ openssl rand -base64 32
 LSKY_IMAGE=ghcr.io/inspoaibox/lksypro-mc:latest
 APP_PORT=8080
 APP_URL=http://服务器IP:8080
-SESSION_DRIVER=cookie
+SESSION_DRIVER=redis
+REDIS_PASSWORD=上面生成的 Redis 随机密码
 
 MYSQL_DATABASE=lsky_prod
 MYSQL_USER=lsky_app
@@ -137,7 +140,7 @@ APP_URL=http://服务器IP
 
 没有配置反向代理和 HTTPS 证书时，不要把 `APP_URL` 写成 `https://...`。
 
-Docker 默认使用内置 MySQL。安装页会自动带出数据库类型、地址、端口、库名和用户名，数据库密码可以留空使用 `.env.docker` 里的 `MYSQL_PASSWORD`，正常只需要填写管理员邮箱和密码。
+Docker 默认使用内置 MySQL，登录会话存到内置 Redis。安装页会自动带出数据库类型、地址、端口、库名和用户名，数据库密码可以留空使用 `.env.docker` 里的 `MYSQL_PASSWORD`，正常只需要填写管理员邮箱和密码。
 
 如果数据库字段没有自动带出，手动填写：
 
@@ -165,8 +168,9 @@ SQL Server: 当前 Docker 镜像未内置 pdo_sqlsrv，安装页会禁用
 MySQL 方式：
 
 ```bash
-docker compose --env-file .env.docker pull app
-docker compose --env-file .env.docker up -d app
+git pull
+docker compose --env-file .env.docker pull
+docker compose --env-file .env.docker up -d --force-recreate
 docker compose --env-file .env.docker exec app php artisan migrate --force
 docker compose --env-file .env.docker exec app php artisan optimize:clear
 ```
@@ -174,8 +178,9 @@ docker compose --env-file .env.docker exec app php artisan optimize:clear
 SQLite 方式：
 
 ```bash
-docker compose -f docker-compose.sqlite.yml --env-file .env.sqlite pull app
-docker compose -f docker-compose.sqlite.yml --env-file .env.sqlite up -d app
+git pull
+docker compose -f docker-compose.sqlite.yml --env-file .env.sqlite pull
+docker compose -f docker-compose.sqlite.yml --env-file .env.sqlite up -d --force-recreate
 docker compose -f docker-compose.sqlite.yml --env-file .env.sqlite exec app php artisan migrate --force
 docker compose -f docker-compose.sqlite.yml --env-file .env.sqlite exec app php artisan optimize:clear
 ```
@@ -255,13 +260,14 @@ docker compose --env-file .env.docker logs --tail=100 app
 如果日志里出现 `Undefined constant "STDIN"`，说明服务器还在运行旧镜像，等 GitHub Actions 构建完成后重新拉取：
 
 ```bash
-docker compose --env-file .env.docker pull app
-docker compose --env-file .env.docker up -d app
+git pull
+docker compose --env-file .env.docker pull
+docker compose --env-file .env.docker up -d --force-recreate
 ```
 
 如果日志里出现 `symlink(): Permission denied`，这是旧镜像创建本地存储软链接失败，不是 MySQL 或 SQLite 选错。等 GitHub Actions 构建完成后重新拉取镜像，再回到安装页重试。
 
-登录提示 `419 页面会话已超时` 时，先确认已拉取最新镜像。Docker 默认使用 `SESSION_DRIVER=cookie`，避免文件会话在容器中读写不稳定。
+登录提示 `419 页面会话已超时` 时，说明登录页发下来的会话没有被 POST 请求识别。当前 Docker 默认使用 `SESSION_DRIVER=redis`，请确认服务器已 `git pull` 到最新 compose 文件，`.env.docker` 里 `SESSION_DRIVER=redis` 且 `REDIS_PASSWORD` 非空，然后重新拉取并重建容器。
 
 Ubuntu 防火墙示例：
 
